@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    # Preload a model (optional but recommended)
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull llama3"]
+
+  backend:
+    build: ./backend
+    restart: always
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_URL: "http://ollama:11434"
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  ollama_data:

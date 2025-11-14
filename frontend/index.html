@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Local LLM Chatbot</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        #chat { width: 100%; height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; }
+        #input { width: 80%; padding: 10px; }
+    </style>
+</head>
+<body>
+
+<h2>On-Prem LLM Chatbot (Ollama)</h2>
+
+<div id="chat"></div><br>
+
+<input id="input" placeholder="Type your question..." />
+<button onclick="send()">Send</button>
+
+<script>
+async function send() {
+    const msg = document.getElementById("input").value;
+    if (!msg) return;
+
+    const chatBox = document.getElementById("chat");
+    chatBox.innerHTML += "<b>You:</b> " + msg + "<br>";
+
+    const res = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg })
+    });
+
+    const data = await res.json();
+    chatBox.innerHTML += "<b>Bot:</b> " + data.response + "<br><br>";
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    document.getElementById("input").value = "";
+}
+</script>
+
+</body>
+</html>
