@@ -2,24 +2,42 @@ version: "3.9"
 
 services:
   ollama:
-    image: ollama/ollama:latest
+    build: ./ollama
     restart: always
-    volumes:
-      - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
-    # Preload a model (optional but recommended)
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull llama3"]
+    volumes:
+      - ollama_data:/root/.ollama
+
+  postgres:
+    image: timescale/timescaledb-postgis:1.3.0-pg11
+    restart: always
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   backend:
     build: ./backend
     restart: always
     depends_on:
       - ollama
+      - postgres
+    volumes:
+      - ./backend:/app
     environment:
       OLLAMA_URL: "http://ollama:11434"
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
     ports:
       - "8000:8000"
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
 
   frontend:
     build: ./frontend
@@ -31,3 +49,4 @@ services:
 
 volumes:
   ollama_data:
+  postgres_data:

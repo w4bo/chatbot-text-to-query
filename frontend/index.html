@@ -5,7 +5,8 @@
     <style>
         body { font-family: Arial; margin: 40px; }
         #chat { width: 100%; height: 300px; border: 1px solid #ccc; padding: 10px; overflow-y: scroll; }
-        #input { width: 80%; padding: 10px; }
+        #input { width: 80%; padding: 10px; height: 80px; resize: vertical; }
+        button { padding: 10px 20px; }
     </style>
 </head>
 <body>
@@ -14,29 +15,44 @@
 
 <div id="chat"></div><br>
 
-<input id="input" placeholder="Type your question..." />
+<textarea id="input" placeholder="Type your question..." ></textarea>
+<br><br>
 <button onclick="send()">Send</button>
 
 <script>
 async function send() {
-    const msg = document.getElementById("input").value;
+    const textarea = document.getElementById("input");
+    const msg = textarea.value.trim();
     if (!msg) return;
 
     const chatBox = document.getElementById("chat");
-    chatBox.innerHTML += "<b>You:</b> " + msg + "<br>";
+    chatBox.innerHTML += "<b>You:</b> " + msg.replace(/\n/g, "<br>") + "<br>";
 
-    const res = await fetch("http://localhost:8000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
-    });
+    try {
+        const res = await fetch("http://localhost:8000/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg })
+        });
 
-    const data = await res.json();
-    chatBox.innerHTML += "<b>Bot:</b> " + data.response + "<br><br>";
-    chatBox.scrollTop = chatBox.scrollHeight;
+        const data = await res.json();
+        chatBox.innerHTML += "<b>Bot:</b> " + data.response.replace(/\n/g, "<br>") + "<br><br>";
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (err) {
+        chatBox.innerHTML += "<b>Bot (error):</b> " + err + "<br><br>";
+    }
 
-    document.getElementById("input").value = "";
+    // textarea.value = "";
 }
+
+// Handle Enter key for sending vs Shift+Enter for newline
+document.getElementById("input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault(); // prevent newline
+        send();
+    }
+    // Shift+Enter will naturally insert a newline, no action needed
+});
 </script>
 
 </body>
