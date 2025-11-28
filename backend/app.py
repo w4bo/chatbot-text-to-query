@@ -15,21 +15,17 @@ def run_sql_query(db: Session, sql: str):
     Safely execute a SQL query and return results formatted as a Markdown table.
     Uses pandas for clean formatting. Only allows SELECT statements.
     """
-    if not sql.strip().lower().startswith("select"):
-        raise ValueError("Only SELECT queries are allowed for safety")
+    if not sql.strip().lower().startswith("select"): raise ValueError("Only SELECT queries are allowed for safety")
     # Execute query
     result = db.execute(text(sql)).fetchall()
-    if not result:
-        return "No results found."
+    if not result: return "No results found."
     # Convert to DataFrame
     df = pd.DataFrame(result, columns=result[0]._mapping.keys())
     # Convert to Markdown
-    markdown_table = df.to_markdown(index=False)
-    return markdown_table
+    return df.to_markdown(index=False)
 
 
 Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -74,19 +70,15 @@ async def chat(req: Query, db: Session = Depends(get_db)):
     # Inject the function specification into the prompt
     modified_prompt = FUNCTION_SPEC + "\n\n" + req.message
     payload = {"model": req.model, "prompt": modified_prompt, "stream": False}
-
     async with httpx.AsyncClient(timeout=httpx.Timeout(120)) as client:
         response = await client.post(f"{OLLAMA_URL}/api/generate", json=payload)
         response.raise_for_status()
-
     bot_response = response.json().get("response", "").strip()
-
     # Check if the response is requesting to invoke the SQL function
     if bot_response.startswith("{") and '"function": "run_sql_query"' in bot_response:
         try:
-            func_call = eval(bot_response)  # or json.loads()
+            func_call = eval(bot_response)
             sql = func_call.get("sql")
-
             # Execute SQL
             result = run_sql_query(db, sql)
             payload = {"model": req.model, "prompt": "This is the result of the previous query, in case following prompts need it without running the query again.\n\n" + str(result), "stream": False}
@@ -95,10 +87,7 @@ async def chat(req: Query, db: Session = Depends(get_db)):
                 response.raise_for_status()
             bot_response = response.json().get("response", "").strip()
             return {"response": "\n" + str(result)}
-
         except Exception as e:
             print(e)
             return {"error": str(e)}
-
-    # Normal chatbot response
     return {"response": bot_response}
